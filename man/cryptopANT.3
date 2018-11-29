@@ -1,0 +1,128 @@
+.\" Copyright (C) 2004-2018 by the University of Southern California
+.\"
+.\" This program is free software; you can redistribute it and/or
+.\" modify it under the terms of the GNU General Public License,
+.\" version 2, as published by the Free Software Foundation.
+.\"
+.\" This program is distributed in the hope that it will be useful,
+.\" but WITHOUT ANY WARRANTY; without even the implied warranty of
+.\" MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+.\" GNU General Public License for more details.
+.\"
+.\" You should have received a copy of the GNU General Public License along
+.\" with this program; if not, write to the Free Software Foundation, Inc.,
+.\" 59 Temple Place, Suite 330, Boston, MA 02111-1307, USA.
+.\"
+.TH cryptopANT 3cryptopANT "2018-07-16"
+.SH NAME
+cryptopANT \- IP Address Anonymization Library
+.SH SYNOPSIS
+.nf
+.ft B
+#include <cryptopANT.h>
+.LP
+.ft B
+.ft
+.fi
+.SH DESCRIPTION
+The cryptopANT ip address anonymization library
+implements techniques for IPv4 and IPv6 address anonymization first
+described in:
+.PP
+.I
+.IP "'Prefix-Preserving IP  Address Anonymization'," 
+  Computer Networks, Volume 46, Issue 2, 7 October 2004, Pages 253-272, Elsevier.
+.PP
+commonly known as Crypto-PAn.
+.PP
+.PP
+This implementation is provided by USC/ISI ANT project:
+.B "http://ant.isi.edu"
+.PP
+.SS
+.SS API Overview
+.PP
+.EX
+.BR "int scramble_init_from_file(const char *keyfile, scramble_crypt_t c4, scramble_crypt_t c6, int *do_mac)"
+.EE
+.IP
+Initializes library from a keyfile and sets up underlying cryptographical mechanism for scrambling
+of IPv4 (c4) and IPv6 (c6) addresses.  See 
+.BR scramble_crypt_t
+for possible values of c4 and c6.  Typically used are:
+.BR SCRAMBLE_NONE
+for no scrambling or
+.BR SCRAMBLE_BLOWFISH
+for scrambling using (fast) Blowfish cypher.  If keyfile does not exist, it is created.
+This function internally calls
+.BR scramble_readstate()
+and
+.BR scrable_init().
+Returns 0 if successful.
+.P
+.EX
+.BR "int32_t   scramble_ip4(uint32_t input, int pass_bits)"
+.BR "int32_t unscramble_ip4(uint32_t input, int pass_bits)"
+.EE
+.IP
+Scrambles or un-scrambles (input) IP address passing through first (pass_bits); the scrambled
+ip address is returned.  Please note that even if (pass_bits) is 0, first few
+bits will be passed through to preserve class of the input IP.  Both input and
+output IPs are in network byte order.
+Note that unscrambling is a costly operation and unscrambling a large number
+of different addresses can take a long time.
+.PP
+.EX
+.BR "void   scramble_ip6(struct in6_addr *input, int pass_bits)"
+.BR "void unscramble_ip6(struct in6_addr *input, int pass_bits)"
+.EE
+.IP
+Scrambles or un-scrambles IPv6 address pointed to by (input) 
+.B "in-place"
+, passing through first (pass_bits).  Addresses are in network byte order.
+Note that unscrambling is a costly operation and unscrambling a large number
+of different addresses can take a long time.
+.PP
+.EX
+.BR "int scramble_readstate(const char *keyfile, scramble_state_t *s)"
+.BR "int scramble_savestate(const char *keyfile, const scramble_state_t *s)"
+.EE
+.IP
+These functions can read scrambling keys from keyfile into
+memory pointed to by (s), or save/write previously initialized state (s)
+to a (keyfile).  After state is read, the library still needs to be 
+initialized by calling
+.B scramble_init()
+Return 0 on success.
+.PP
+.EX
+.BR "int scramble_init(const scramble_state_t *s)"
+.EE
+.PP
+.IP
+Initializes library using state pointed by (s).  Returns 0 on success.
+
+
+.SH SEE ALSO
+.BR scramble_ips 
+.IP
+is a binary for anonymizing textual IP addresses, which comes packaged with this library
+.EP
+.PP
+.SH AUTHORS
+The cryptopANT library was written by
+.IP "Yuri Pradkin,"
+University of Southern California, Information Sciences Institute, CA.
+.EP
+.LP
+The current version is available from "ANT Project"'s Web site at
+.LP
+.RS
+.I http://ant.isi.edu
+.RE
+.SH BUGS
+Please send problems, bugs, questions, desirable enhancements, etc. to:
+.LP
+.RS
+ant@isi.edu
+.RE

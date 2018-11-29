@@ -18,10 +18,10 @@
  *
  */
 
-#ifndef lint
-static const char rcsid[] =
-    "@(#) $Id: 35e089a7da2122012654b19832826c3224f1f2dc $";
-#endif
+// #ifndef lint
+// static const char rcsid[] =
+//     "@(#) $Id: 35e089a7da2122012654b19832826c3224f1f2dc $";
+// #endif
 
 #include <stdio.h>
 
@@ -62,7 +62,7 @@ static const char rcsid[] =
 #endif
 
 //determined by autoconf
-#ifdef WORDS_BIGENDIAN 
+#ifdef WORDS_BIGENDIAN
 //sigh, older version of the code was not byte-order safe; this is needed
 //to ensure backward compatibility AND compatibility with BE-systems.
 #include <byteswap.h>
@@ -141,13 +141,13 @@ scramble_name2type(const char *name)
 	return SCRAMBLE_NONE;
 }
 
-scramble_crypt_t 
+scramble_crypt_t
 scramble_crypto_ip4(void)
 {
 	return scramble_crypto4;
 }
 
-scramble_crypt_t 
+scramble_crypt_t
 scramble_crypto_ip6(void)
 {
 	return scramble_crypto6;
@@ -221,8 +221,8 @@ scramble_newiv(u_char *iv, int ivlen)
 	return 0;
 }
 
-/* read a hex string from fd at current position and store it in s */ 
-static int 
+/* read a hex string from fd at current position and store it in s */
+static int
 readhexstring(FILE *f, u_char *s, int *len)
 {
         char c = 0;
@@ -348,7 +348,7 @@ scramble_savestate(const char *fn, const scramble_state_t *s)
 			return -1;
 		}
 	}
-	
+
 	fprintf(f, ":");
 	for (i = 0; i < s->ivlen; ++i) {
 		if (fprintf(f, "%02x", s->iv[i]) < 0) {
@@ -356,7 +356,7 @@ scramble_savestate(const char *fn, const scramble_state_t *s)
 			fclose(f);
 			return -1;
 		}
-	}	
+	}
 	fprintf(f, "\n");
 	fclose(f);
 	return 0;
@@ -377,7 +377,7 @@ scramble_init(const scramble_state_t *s)
 
 	memcpy(&b4_in, s->pad, plen);
 	ip4pad = cryptopant_swap32(b4_in.ip4);
-	
+
 	memcpy(&b6_in, s->pad, s->plen);
 	ip6pad[0] = b6_in.ip6.s6_addr32[0];
 	ip6pad[1] = b6_in.ip6.s6_addr32[1];
@@ -394,7 +394,7 @@ scramble_init(const scramble_state_t *s)
 	scramble_mac = 0;
 
 	memcpy(scramble_mac_buf, s->mac, s->mlen);
-	
+
 	if (s->mlen > 0) {
 		scramble_mac = 1;
 		if (s->mlen < ETHER_ADDR_LEN + ETHER_VLAN_LEN) {
@@ -409,7 +409,7 @@ scramble_init(const scramble_state_t *s)
 	/* we don't want to map ether unicast to multicast and visa versa */
 	RESET_ETHER_MCAST(scramble_ether_addr);
 
-	memcpy(&scramble_ether_vlan, scramble_mac_buf + ETHER_ADDR_LEN, ETHER_VLAN_LEN); 
+	memcpy(&scramble_ether_vlan, scramble_mac_buf + ETHER_ADDR_LEN, ETHER_VLAN_LEN);
 	return 0;
 }
 
@@ -469,14 +469,14 @@ scramble_init_from_file(const char *fn, scramble_crypt_t c4, scramble_crypt_t c6
 		if (do_mac)
 			*do_mac = (s.mlen > 0);
 	}
-	
+
 	if (scramble_init(&s) < 0)
 		return -1;
 	return 0;
 }
 
 /* scramble IPv4 addresses, input and output are in network byte order */
-uint32_t 
+uint32_t
 scramble_ip4(uint32_t input, int pass_bits) {
 	uint32_t output = 0;
 	uint32_t m = 0xffffffff << 1;
@@ -517,7 +517,7 @@ scramble_ip4(uint32_t input, int pass_bits) {
 
 	for (i = 31; i > pbits - 1; --i) {
 		/* pass through 'i' highest bits of ip4 */
-		b4_in.ip4 &= m; 
+		b4_in.ip4 &= m;
 		/* the following could be:
 		 *   b4_in.ip4 |= (ip4pad & ~m); */
 		b4_in.ip4 |= (ip4pad >> i);
@@ -552,7 +552,7 @@ scramble_ip4(uint32_t input, int pass_bits) {
 
 /* scramble ipv6 address in place, in network byte order */
 void
-scramble_ip6(struct in6_addr *input, int pass_bits) 
+scramble_ip6(struct in6_addr *input, int pass_bits)
 {
 	struct in6_addr output;
 	int i, w;
@@ -563,7 +563,7 @@ scramble_ip6(struct in6_addr *input, int pass_bits)
 	b6_in.ip6.s6_addr32[1] = ip6pad[1];
 	b6_in.ip6.s6_addr32[2] = ip6pad[2];
 	b6_in.ip6.s6_addr32[3] = ip6pad[3];
-	
+
 	for (w = 0; w < 4; ++w) {
 		uint32_t m = 0xffffffff << 1;
 		uint32_t x = ntohl(input->s6_addr32[w]);
@@ -587,11 +587,11 @@ scramble_ip6(struct in6_addr *input, int pass_bits)
 				memset(ivec, 0, sizeof(ivec));
 				BF_cbc_encrypt((u_char*)&b6_in, (u_char*)&b6_out,
 					       sizeof(struct in6_addr),
-					       &scramble_key.bfkey, 
+					       &scramble_key.bfkey,
 					       ivec, BF_ENCRYPT);
 				break;
 			case SCRAMBLE_AES:
-				AES_ecb_encrypt((u_char*)&b6_in, (u_char*)&b6_out, 
+				AES_ecb_encrypt((u_char*)&b6_in, (u_char*)&b6_out,
 						&scramble_key.aeskey, AES_ENCRYPT);
 				break;
 			case SCRAMBLE_SHA1:
@@ -600,7 +600,7 @@ scramble_ip6(struct in6_addr *input, int pass_bits)
 			default:
 				abort();
 			}
-			output.s6_addr32[w] |= ((ntohl(b6_out.ip6.s6_addr32[3]) & 1) 
+			output.s6_addr32[w] |= ((ntohl(b6_out.ip6.s6_addr32[3]) & 1)
 						<< (31 - i));
 			m <<= 1;
 		}
@@ -617,7 +617,7 @@ scramble_ip6(struct in6_addr *input, int pass_bits)
 
 /* reverse map scrambled IP addresses, all network byte order */
 uint32_t
-unscramble_ip4(uint32_t input, int pass_bits) 
+unscramble_ip4(uint32_t input, int pass_bits)
 {
 	int i;
 	uint32_t guess, res;
@@ -638,12 +638,12 @@ unscramble_ip4(uint32_t input, int pass_bits)
 	//unreachable, since there should be always a match
 	//(since we're zeroing out at least one bit per iteration)
 	assert(0);
-	return (0xffffffff); /* cannot find the match */	
+	return (0xffffffff); /* cannot find the match */
 }
 
 /* unscramble ipv6 address in place, in network byte order */
 void
-unscramble_ip6(struct in6_addr *input, int pass_bits) 
+unscramble_ip6(struct in6_addr *input, int pass_bits)
 {
 	struct in6_addr guess;
 	struct in6_addr res;
@@ -657,12 +657,12 @@ unscramble_ip6(struct in6_addr *input, int pass_bits)
 			res = guess;
 			scramble_ip6(&res, pass_bits);
 			r = res.s6_addr32[i] ^ input->s6_addr32[i];
-		
+
 			if (r == 0) break;
 
 			guess.s6_addr32[i] ^= r;
 		}
-	
+
 	}
 	*input = guess;
 	return;

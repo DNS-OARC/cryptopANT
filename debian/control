@@ -1,0 +1,28 @@
+Source: cryptopant
+Section: net
+Priority: optional
+Maintainer: Jerry Lundström <lundstrom.jerry@gmail.com>
+Build-Depends: debhelper (>= 8.0.0), build-essential, automake, autoconf,
+ libtool, libssl-dev
+Standards-Version: 3.9.4
+Homepage: http://ant.isi.edu/software/cryptopANT/index.html
+Vcs-Git: https://github.com/DNS-OARC/cryptopANT.git
+Vcs-Browser: https://github.com/DNS-OARC/cryptopANT
+
+Package: libcryptopant1
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Description: IP address anonymization library
+ cryptopANT is a library for IP address anonymization. It implements
+ a widely used prefix-preserving technique known as "cryptopan".
+ This is ANT's project implementation of this technique for
+ anonymization of ipv4 and ipv6 addresses.
+
+Package: libcryptopant-dev
+Architecture: any
+Depends: libcryptopant1, ${shlibs:Depends}, ${misc:Depends}
+Description: IP address anonymization library development files
+ cryptopANT is a library for IP address anonymization. It implements
+ a widely used prefix-preserving technique known as "cryptopan".
+ This is ANT's project implementation of this technique for
+ anonymization of ipv4 and ipv6 addresses.

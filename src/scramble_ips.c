@@ -38,10 +38,10 @@
 #include <regex.h> //xxx need to check in autoconf
 #include "cryptopANT.h"
 
-#ifndef lint
-static const char rcsid[] =
-"@(#) $Id: 89d8a3f3fea9f54bc16a49c7c9d8788716f83f8f $";
-#endif
+// #ifndef lint
+// static const char rcsid[] =
+// "@(#) $Id: 89d8a3f3fea9f54bc16a49c7c9d8788716f83f8f $";
+// #endif
 
 #define PASS4		256
 #define PASS6		257
@@ -58,7 +58,7 @@ static int reverse_mode = 0;
 
 void
 usage(const char *pname) {
-    fprintf(stderr, 
+    fprintf(stderr,
 	    "Read IP addresses from stdin and print scrambled addresses on stdout\n"
 	    "USAGE:\n"
 	    "\t%s [--pass4=<num>] [--newkey|-G [--type TYPE]] [--pass6=<num>] [-r] key_file\n"
@@ -75,10 +75,10 @@ usage(const char *pname) {
     exit(1);
 }
 
-int 
+int
 anon_ip4_txt(const char *oldip, char *newip) {
     struct in_addr ip4, ip4s;
-    if (inet_pton(AF_INET, oldip, &ip4) <= 0) { 
+    if (inet_pton(AF_INET, oldip, &ip4) <= 0) {
 	fprintf(stderr, "don't understand address (%s)\n", oldip);
 #ifdef HAVE_STRLCPY
     	strlcpy(newip, oldip, strlen(oldip));
@@ -86,7 +86,7 @@ anon_ip4_txt(const char *oldip, char *newip) {
 	strcpy(newip, oldip); //copy without changing
 #endif
     } else {
-	ip4s.s_addr = (reverse_mode) 
+	ip4s.s_addr = (reverse_mode)
 	    ? unscramble_ip4(ip4.s_addr, pass_bits4)
 	    : scramble_ip4(ip4.s_addr, pass_bits4);
 	if (newip != inet_ntop(AF_INET, &ip4s, newip, 256)) {
@@ -99,7 +99,7 @@ anon_ip4_txt(const char *oldip, char *newip) {
 int
 anon_ip6_txt(const char *oldip, char *newip) {
     struct in6_addr ip6;
-    if (inet_pton(AF_INET6, oldip, &ip6) <= 0) { 
+    if (inet_pton(AF_INET6, oldip, &ip6) <= 0) {
 	fprintf(stderr, "don't understand address (%s)\n", oldip);
 #ifdef HAVE_STRLCPY
     	strlcpy(newip, oldip, strlen(oldip));
@@ -121,7 +121,7 @@ anon_ip6_txt(const char *oldip, char *newip) {
 }
 
 char *
-search_replace_ip(const char *in, char *out, const regex_t *r, 
+search_replace_ip(const char *in, char *out, const regex_t *r,
 		  int (*anonf)(const char*, char*)) {
     const char *c = in;
     char *c2 = out;
@@ -147,7 +147,7 @@ search_replace_ip(const char *in, char *out, const regex_t *r,
     }
     //copy the rest
 #ifdef HAVE_STRLCPY
-    strlcpy(c2, c, BUFSIZE-(out-c2)); 
+    strlcpy(c2, c, BUFSIZE-(out-c2));
 #else
     strcpy(c2, c);
 #endif
@@ -156,7 +156,7 @@ search_replace_ip(const char *in, char *out, const regex_t *r,
 }
 
 int
-main(int argc, char *argv[]) 
+main(int argc, char *argv[])
 {
     FILE *keyfile = NULL;
     const char *keyfn = NULL;
@@ -166,7 +166,7 @@ main(int argc, char *argv[])
     int text_mode = 0;
     int opt_newkey = 0;
     char *opt_keytype = NULL;
-    scramble_crypt_t key_crypto = SCRAMBLE_BLOWFISH; 
+    scramble_crypt_t key_crypto = SCRAMBLE_BLOWFISH;
 
     struct option long_options[] = {
         {"newkey",0, NULL, 'G'},
@@ -177,7 +177,7 @@ main(int argc, char *argv[])
 	{"text",  0, NULL, 't'}
     };
 
-    while((opt = getopt_long(argc, argv, 
+    while((opt = getopt_long(argc, argv,
 			     "Ghrt",
 			     long_options, NULL)) != EOF) {
 	switch(opt) {
@@ -245,7 +245,7 @@ main(int argc, char *argv[])
     if (opt_keytype && !opt_newkey) {
         fprintf(stderr, "Error: --type requires --newkey (-G) option.\n");
         exit(1);
-    } 
+    }
     if ((keyfile = fopen(keyfn, "r")) == NULL) {
         if (!opt_newkey) {
             /* no keyfile, but supposed to exist */
@@ -275,7 +275,7 @@ main(int argc, char *argv[])
 	fprintf(stderr, "Error: setting line buffering: %s\n", strerror(errno));
 	exit(1);
     }
-    
+
 #if 1 //HAVE_REGEX_H
     static const char REGEX4[]="((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?))";
     static const char REGEX6[]="((([0-9A-Fa-f]{1,4}:){7}([0-9A-Fa-f]{1,4}|:))|(([0-9A-Fa-f]{1,4}:){6}(:[0-9A-Fa-f]{1,4}|((25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])(\\.(25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])){3})|:))|(([0-9A-Fa-f]{1,4}:){5}(((:[0-9A-Fa-f]{1,4}){1,2})|:((25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])(\\.(25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])){3})|:))|(([0-9A-Fa-f]{1,4}:){4}(((:[0-9A-Fa-f]{1,4}){1,3})|((:[0-9A-Fa-f]{1,4})?:((25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])(\\.(25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])){3}))|:))|(([0-9A-Fa-f]{1,4}:){3}(((:[0-9A-Fa-f]{1,4}){1,4})|((:[0-9A-Fa-f]{1,4}){0,2}:((25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])(\\.(25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])){3}))|:))|(([0-9A-Fa-f]{1,4}:){2}(((:[0-9A-Fa-f]{1,4}){1,5})|((:[0-9A-Fa-f]{1,4}){0,3}:((25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])(\\.(25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])){3}))|:))|(([0-9A-Fa-f]{1,4}:){1}(((:[0-9A-Fa-f]{1,4}){1,6})|((:[0-9A-Fa-f]{1,4}){0,4}:((25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])(\\.(25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])){3}))|:))|(:(((:[0-9A-Fa-f]{1,4}){1,7})|((:[0-9A-Fa-f]{1,4}){0,5}:((25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])(\\.(25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])){3}))|:)))(%.+)?";
@@ -294,7 +294,7 @@ main(int argc, char *argv[])
 	while (fgets(cbuf, sizeof(cbuf)-257, stdin) != NULL) {
 	    search_replace_ip(cbuf, cbuf2, &r4, &anon_ip4_txt);
 	    search_replace_ip(cbuf2, cbuf, &r6, &anon_ip6_txt);
-	    printf(cbuf);
+	    fputs(cbuf, stdout);
 	}
 	return 0;
     }
@@ -309,13 +309,13 @@ main(int argc, char *argv[])
 	struct in_addr	ip4, ip4s;
 	struct in6_addr ip6, ip6s;
 	void *old, *new;
-	char *c2;
+	// char *c2;
 	if (fgets(cbuf, sizeof(cbuf)-1, stdin) == NULL)
 	    break;
 	if (text_mode) {
 	    search_replace_ip(cbuf, cbuf2, &r4, &anon_ip4_txt);
 	    search_replace_ip(cbuf2, cbuf, &r6, &anon_ip6_txt);
-	    printf(cbuf);
+	    fputs(cbuf, stdout);
 	    continue;
 	}
 	for (i = strlen(cbuf)-1; i >= 0; --i) {
@@ -361,12 +361,12 @@ main(int argc, char *argv[])
 		    hostbits -= 32;
 		}
 		if (hostbits > 0) {
-		    ip6s.s6_addr32[i] = htonl(ntohl(ip6s.s6_addr32[i]) 
+		    ip6s.s6_addr32[i] = htonl(ntohl(ip6s.s6_addr32[i])
 					    & (0xffffffffUL << hostbits));
 		}
 	    }
 	} else {
-	    ip4s.s_addr = (reverse_mode) 
+	    ip4s.s_addr = (reverse_mode)
 		? unscramble_ip4(ip4.s_addr, pass_bits4)
 		: scramble_ip4(ip4.s_addr, pass_bits4);
 	    old = &ip4;
@@ -382,12 +382,12 @@ main(int argc, char *argv[])
 		ip4s.s_addr = htonl(ip4s.s_addr);
 	    }
 	}
-	
+
 	if (cbuf != inet_ntop(af, new, cbuf, sizeof(cbuf))) {
 	    perror("Error: can't print new address");
 	    exit(1);
 	}
-     
+
 	printf("%s", cbuf);
 	if (plen)
 	    printf("/%d", prefix);

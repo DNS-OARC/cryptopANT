@@ -6,7 +6,6 @@ m4_define([cryptopANT_version], [cryptopANT_major_version.cryptopANT_minor_versi
 AC_INIT([cryptopANT], [cryptopANT_version], [ant@isi.edu], [cryptopANT])
 dnl m4_pattern_allow(AC_CONFIG_MACRO_DIRS)
 AC_CONFIG_MACRO_DIR([m4])
-AC_CONFIG_AUX_DIR([.aux])
 AC_PROG_CC
 AC_C_BIGENDIAN()
 AM_PROG_CC_C_O
@@ -31,10 +30,10 @@ if test "x$HAVE_OPENSSL_H" = "x0"; then
      AC_MSG_FAILURE([ssl is not found: make sure openssl-devel is installed])
 fi
 
-AC_CHECK_MEMBER([struct in6_addr.s6_addr32], 
+AC_CHECK_MEMBER([struct in6_addr.s6_addr32],
 	[AC_DEFINE([HAVE_S6_ADDR32], [1])],
 	[
-		AC_CHECK_MEMBER([struct in6_addr.__u6_addr.__u6_addr32], 
+		AC_CHECK_MEMBER([struct in6_addr.__u6_addr.__u6_addr32],
 			[AC_DEFINE([HAVE__U6_ADDR32], [1])],
 			[AC_MSG_ERROR([CAN'T find s6_addr32])],
 			[#include <netinet/in.h>])
@@ -45,7 +44,30 @@ AC_CHECK_FUNCS([strlcpy])
 AC_C_CONST
 AC_TYPE_SIZE_T
 AC_TYPE_UINT32_T
- 
+
+# Check --enable-warn-all
+AC_ARG_ENABLE([warn-all], [AS_HELP_STRING([--enable-warn-all], [Enable all compiler warnings])], [AX_CFLAGS_WARN_ALL()])
+
+# Check --with-extra-cflags
+AC_ARG_WITH([extra-cflags], [AS_HELP_STRING([--with-extra-cflags=CFLAGS], [Add extra CFLAGS])], [
+  AC_MSG_NOTICE([appending extra CFLAGS... $withval])
+  AS_VAR_APPEND(CFLAGS, [" $withval"])
+])
+
+# Check --with-extra-ldflags
+AC_ARG_WITH([extra-ldflags], [AS_HELP_STRING([--with-extra-ldflags=CFLAGS], [Add extra LDFLAGS])], [
+  AC_MSG_NOTICE([appending extra LDFLAGS... $withval])
+  AS_VAR_APPEND(LDFLAGS, [" $withval"])
+])
+
+# Check --with-scramble_ips
+build_scramble_ips=
+AC_ARG_WITH([scramble_ips], [AS_HELP_STRING([--with-scramble_ips], [Also build scramble_ips])], [
+  AC_MSG_NOTICE([building scramble_ips])
+  build_scramble_ips=yes
+])
+AM_CONDITIONAL([BUILD_SCRAMBLE_IPS], [test "x$build_scramble_ips" = "xyes"])
+
 AC_CONFIG_FILES([Makefile cryptopANT.spec])
 AC_ENABLE_SHARED
 AC_ENABLE_STATIC

@@ -1,5 +1,5 @@
 m4_define([cryptopANT_major_version], [1])
-m4_define([cryptopANT_minor_version], [1])
+m4_define([cryptopANT_minor_version], [2])
 m4_define([cryptopANT_micro_version], [0])
 m4_define([cryptopANT_version], [cryptopANT_major_version.cryptopANT_minor_version.cryptopANT_micro_version])
 
@@ -60,11 +60,13 @@ AC_ARG_WITH([extra-ldflags], [AS_HELP_STRING([--with-extra-ldflags=CFLAGS], [Add
   AS_VAR_APPEND(LDFLAGS, [" $withval"])
 ])
 
-# Check --with-scramble_ips
-build_scramble_ips=
-AC_ARG_WITH([scramble_ips], [AS_HELP_STRING([--with-scramble_ips], [Also build scramble_ips])], [
-  AC_MSG_NOTICE([building scramble_ips])
-  build_scramble_ips=yes
+# Check --without-scramble_ips
+build_scramble_ips=yes
+AC_ARG_WITH([scramble_ips], [AS_HELP_STRING([--without-scramble_ips], [Do not build scramble_ips (default built)])], [
+  if test "x$withval" = "xno"; then
+    AC_MSG_NOTICE([NOT building scramble_ips])
+    build_scramble_ips=no
+  fi
 ])
 AM_CONDITIONAL([BUILD_SCRAMBLE_IPS], [test "x$build_scramble_ips" = "xyes"])
 
@@ -76,4 +78,7 @@ m4_ifdef([AM_PROG_AR], [AM_PROG_AR])
 LT_INIT
 
 AC_SUBST([PACKAGE_VERSION], [cryptopANT_version])
+AC_SUBST([PACKAGE_VERSION_MAJOR], [cryptopANT_major_version])
+AC_SUBST([PACKAGE_VERSION_MINOR], [cryptopANT_minor_version])
+AC_SUBST([PACKAGE_VERSION_MICRO], [cryptopANT_micro_version])
 AC_OUTPUT

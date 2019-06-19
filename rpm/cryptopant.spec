@@ -1,7 +1,7 @@
 %define sover   1
 %define libname libcryptopant%{sover}
 Name:           cryptopant
-Version:        1.1.0
+Version:        1.2.0
 Release:        1%{?dist}
 Summary:        IP address anonymization library
 Group:          Development/Libraries/C and C++
@@ -50,7 +50,7 @@ anonymization of ipv4 and ipv6 addresses.
 
 %build
 sh autogen.sh
-%configure
+%configure --without-scramble_ips
 make %{?_smp_mflags}
 
 
@@ -86,5 +86,7 @@ rm -rf $RPM_BUILD_ROOT
 
 
 %changelog
+* Wed Jun 19 2019 Jerry Lundström <lundstrom.jerry@gmail.com> 1.2.0-1
+- Update to v1.2.0
 * Thu Nov 29 2018 Jerry Lundström <lundstrom.jerry@gmail.com> 1.1.0-1
 - Initial v1.1.0 code

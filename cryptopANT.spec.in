@@ -1,7 +1,7 @@
 %define name            cryptopANT
 %define version         @PACKAGE_VERSION@
 BuildRoot:              %{_tmppath}/%{name}-%{version}-build
-Summary:                libtrace is a library for trace processing
+Summary:                IP address anonymization library and utils
 License:                GPL
 URL:                    http://ant.isi.edu/software/cryptopANT/index.html
 Name:                   %{name}
@@ -11,24 +11,37 @@ Source:                 %{name}-%{version}.tar.gz
 Packager:               yuri@isi.edu
 Prefix:                 /usr
 Group:                  System/Libraries
-BuildRequires:          gcc glibc-headers openssl-devel
+BuildRequires:          gcc glibc-headers 
+BuildRequires:          openssl-devel
+BuildRequires:          autoconf automake libtool
 Requires:               openssl
 
 %description
-cryptopANT is a library for ip address anonymization. It implements a widely used prefix-preserving technique known as "cryptopan".  This is ANT's project implementation of this technique for anonymization of ipv4 and ipv6 addresses.
+cryptopANT is a library for ip address anonymization.  It implements a
+widely used prefix-preserving technique known as "cryptopan".  This is
+ANT's project implementation of this technique for anonymization of ipv4
+and ipv6 addresses.
 
 %prep
 %setup -q
 
 %build
-./configure --prefix %{_prefix} --libdir=%{_libdir}
+sh autogen.sh
+%configure
 make
 
 %install
-make DESTDIR=%{buildroot} install
+rm -rf $RPM_BUILD_ROOT
+make install DESTDIR=%{buildroot}
 
 %clean
-rm -rf %{buildroot}
+rm -rf $RPM_BUILD_ROOT
+
+%post
+/sbin/ldconfig
+
+%postun
+/sbin/ldconfig
 
 %files
 %defattr(-,root,root,-)

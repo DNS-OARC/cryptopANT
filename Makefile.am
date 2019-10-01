@@ -1,6 +1,6 @@
 lib_LTLIBRARIES = libcryptopant.la
 libcryptopant_la_SOURCES = src/cryptopANT.c src/cryptopANT.h
-libcryptopant_la_LDFLAGS = -version-info @PACKAGE_VERSION_MAJOR@:@PACKAGE_VERSION_MINOR@:@PACKAGE_VERSION_MICRO@ -lcrypto
+libcryptopant_la_LDFLAGS = -version-info @CRYPTOPANT_LIBRARY_VERSION@ -lcrypto
 ACLOCAL_AMFLAGS = -I m4
 include_HEADERS = src/cryptopANT.h
 dist_man3_MANS = man/cryptopANT.3

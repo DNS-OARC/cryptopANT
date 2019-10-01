@@ -1,3 +1,9 @@
+cryptopant (1.2.1-1~unstable+1) unstable; urgency=low
+
+  * Update to v1.2.1
+
+ -- Jerry Lundström <lundstrom.jerry@gmail.com>  Tue, 01 Oct 2019 16:00:32 +0200
+
 cryptopant (1.2.0-1~unstable+1) unstable; urgency=low
 
   * Update to v1.2.0

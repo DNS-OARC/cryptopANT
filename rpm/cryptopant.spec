@@ -1,7 +1,7 @@
 %define sover   1
 %define libname libcryptopant%{sover}
 Name:           cryptopant
-Version:        1.2.0
+Version:        1.2.1
 Release:        1%{?dist}
 Summary:        IP address anonymization library
 Group:          Development/Libraries/C and C++
@@ -88,6 +88,8 @@ rm -rf $RPM_BUILD_ROOT
 
 
 %changelog
+* Tue Oct 01 2019 Jerry Lundström <lundstrom.jerry@gmail.com> 1.2.1-1
+- Update to v1.2.1
 * Wed Jun 19 2019 Jerry Lundström <lundstrom.jerry@gmail.com> 1.2.0-1
 - Update to v1.2.0
 * Thu Nov 29 2018 Jerry Lundström <lundstrom.jerry@gmail.com> 1.1.0-1

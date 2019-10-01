@@ -1,7 +1,15 @@
 m4_define([cryptopANT_major_version], [1])
 m4_define([cryptopANT_minor_version], [2])
-m4_define([cryptopANT_micro_version], [0])
+m4_define([cryptopANT_micro_version], [1])
 m4_define([cryptopANT_version], [cryptopANT_major_version.cryptopANT_minor_version.cryptopANT_micro_version])
+
+#format: current:revision:age
+#If the library source code has changed at all since the last update, then increment revision (‘c:r:a’ becomes ‘c:r+1:a’).
+#If any interfaces have been added, removed, or changed since the last update, increment current, and set revision to 0.
+#If any interfaces have been added since the last public release, then increment age.
+#If any interfaces have been removed or changed since the last public release, then set age to 0.
+#see also https://autotools.io/libtool/version.html
+m4_define([cryptopANT_library_version], ["1:3:0"])
 
 AC_INIT([cryptopANT], [cryptopANT_version], [ant@isi.edu], [cryptopANT])
 dnl m4_pattern_allow(AC_CONFIG_MACRO_DIRS)
@@ -60,13 +68,14 @@ AC_ARG_WITH([extra-ldflags], [AS_HELP_STRING([--with-extra-ldflags=CFLAGS], [Add
   AS_VAR_APPEND(LDFLAGS, [" $withval"])
 ])
 
-# Check --without-scramble_ips
-build_scramble_ips=yes
-AC_ARG_WITH([scramble_ips], [AS_HELP_STRING([--without-scramble_ips], [Do not build scramble_ips (default built)])], [
-  if test "x$withval" = "xno"; then
-    AC_MSG_NOTICE([NOT building scramble_ips])
-    build_scramble_ips=no
-  fi
+# Check --with-scramble_ips
+build_scramble_ips=no
+AC_ARG_WITH([scramble_ips], [AS_HELP_STRING([--with-scramble_ips], [Also build scramble_ips tool])], [
+  build_scramble_ips=$withval
+  AS_IF([test "x$build_scramble_ips" = "xyes"],
+    [AC_MSG_NOTICE([Building tool "scramble_ips"])],
+    [AC_MSG_NOTICE([Not building tool "scramble_ips"])]
+  )
 ])
 AM_CONDITIONAL([BUILD_SCRAMBLE_IPS], [test "x$build_scramble_ips" = "xyes"])
 
@@ -81,4 +90,5 @@ AC_SUBST([PACKAGE_VERSION], [cryptopANT_version])
 AC_SUBST([PACKAGE_VERSION_MAJOR], [cryptopANT_major_version])
 AC_SUBST([PACKAGE_VERSION_MINOR], [cryptopANT_minor_version])
 AC_SUBST([PACKAGE_VERSION_MICRO], [cryptopANT_micro_version])
+AC_SUBST([CRYPTOPANT_LIBRARY_VERSION], [cryptopANT_library_version])
 AC_OUTPUT

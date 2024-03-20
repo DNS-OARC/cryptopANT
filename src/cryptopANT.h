@@ -1,7 +1,7 @@
 /* -*-  Mode:C; c-basic-offset:8; tab-width:8; indent-tabs-mode:t -*- */
 /*
- * Copyright (C) 2004-2018 by the University of Southern California
- * $Id: 58a4704e7a2580bed5f7eac76cd23b809dd558fa $
+ * Copyright (C) 2004-2024 by the University of Southern California
+ * $Id: 280914920d2b6684efa33fd6f3ac6d49ce3f8884 $
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License,
@@ -33,8 +33,8 @@ extern "C" {
 #define _XOR32(a, b, i)         (((uint32_t *)(a))[i] ^= ((uint32_t *)(b))[i])
 
 #define SCRAMBLE_ETHER_ADDR(a)  if (1) {     \
-        _XOR32(a, scramble_ether_addr, 0);              \
-        _XOR16(a, scramble_ether_addr, 2);              \
+	_XOR32(a, scramble_ether_addr, 0);   \
+	_XOR16(a, scramble_ether_addr, 2);   \
     }
 
 #define SCRAMBLE_ETHER_VLAN(v)	((v) ^= scramble_ether_vlan);
@@ -79,6 +79,7 @@ extern int		scramble_readstate	(const char *, scramble_state_t *);
 extern int		scramble_savestate	(const char *, const scramble_state_t *);
 extern int		scramble_init		(const scramble_state_t *s);
 extern int		scramble_init_from_file	(const char *, scramble_crypt_t, scramble_crypt_t, int *);
+extern void             scramble_cleanup        ();
 extern uint32_t 	scramble_ip4		(uint32_t, int);
 extern uint32_t 	unscramble_ip4		(uint32_t, int);
 extern void		scramble_ip6		(struct in6_addr *, int);

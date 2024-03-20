@@ -1,7 +1,7 @@
 /* -*-  Mode:C; c-basic-offset:4; tab-width:8; indent-tabs-mode:t -*- */
 /*
- * Copyright (C) 2004-2019 by the University of Southern California
- * $Id: 89d8a3f3fea9f54bc16a49c7c9d8788716f83f8f $
+ * Copyright (C) 2004-2024 by the University of Southern California
+ * $Id: 5b5617578e43cc15592e055062260ca63b4ecfca $
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License,
@@ -39,10 +39,8 @@
 #include <assert.h>
 #include "cryptopANT.h"
 
-// #ifndef lint
-// static const char rcsid[] =
-// "@(#) $Id: 89d8a3f3fea9f54bc16a49c7c9d8788716f83f8f $";
-// #endif
+//autoconfigured
+#include "config.h"
 
 //long options
 #define PASS4		256
@@ -53,12 +51,18 @@
 
 #define IP4MAXLEN       15      //strlen("xxx.xxx.xxx.xxx")
 #define IP6MAXLEN       39      //strlen("xxxx:xxxx:xxxx:xxxx:xxxx:xxxx:xxxx:xxxx")
+#define CBUF_SZ         (IP6MAXLEN*2)  
 
 #define INITBUFSIZE	4096    //xxx need more space in case text expands due to IP scrambling
 
-#ifdef HAVE__U6_ADDR32
+#if HAVE__U6_ADDR32
 #define s6_addr32 __u6_addr.__u6_addr32
 #endif
+
+#if HAVE_REGEX_H
+static const char REGEX4[]="((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?))";
+static const char REGEX6[]="(((([0-9A-Fa-f]{1,4}:){7}([0-9A-Fa-f]{1,4}|:))|(([0-9A-Fa-f]{1,4}:){6}(:[0-9A-Fa-f]{1,4}|((25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])(\\.(25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])){3})|:))|(([0-9A-Fa-f]{1,4}:){5}(((:[0-9A-Fa-f]{1,4}){1,2})|:((25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])(\\.(25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])){3})|:))|(([0-9A-Fa-f]{1,4}:){4}(((:[0-9A-Fa-f]{1,4}){1,3})|((:[0-9A-Fa-f]{1,4})?:((25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])(\\.(25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])){3}))|:))|(([0-9A-Fa-f]{1,4}:){3}(((:[0-9A-Fa-f]{1,4}){1,4})|((:[0-9A-Fa-f]{1,4}){0,2}:((25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])(\\.(25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])){3}))|:))|(([0-9A-Fa-f]{1,4}:){2}(((:[0-9A-Fa-f]{1,4}){1,5})|((:[0-9A-Fa-f]{1,4}){0,3}:((25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])(\\.(25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])){3}))|:))|(([0-9A-Fa-f]{1,4}:){1}(((:[0-9A-Fa-f]{1,4}){1,6})|((:[0-9A-Fa-f]{1,4}){0,4}:((25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])(\\.(25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])){3}))|:))|(:(((:[0-9A-Fa-f]{1,4}){1,7})|((:[0-9A-Fa-f]{1,4}){0,5}:((25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])(\\.(25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])){3}))|:)))(%.+)?)";
+#endif //HAVE_REGEX_H
 
 static int pass_bits4 = 0;
 static int pass_bits6 = 0;
@@ -67,6 +71,8 @@ static int reverse_mode = 0;
 //buffers for in/out processing
 static char  *linebuf1 = NULL,*linebuf2 = NULL;
 static size_t linebuf1_sz = 0, linebuf2_sz = 0;
+
+static char cbuf[CBUF_SZ];
 
 void
 usage(const char *pname) {
@@ -80,11 +86,13 @@ usage(const char *pname) {
             "\t\t               supported choices are: blowfish (default), aes, sha1, md5\n"
 	    "\t\t--pass4=<num>  pass <num> higher bits of ipv4 addresses through unchanged\n"
 	    "\t\t--pass6=<num>  pass <num> higher bits of ipv6 addresses through unchanged\n"
+#if HAVE_REGEX_H
 	    "\t\t--ip-prefix=<regex> all ips must be prefixed by this regex prefix (both ipv4 and ipv6)\n"
 	    "\t\t--ip-suffix=<regex> all ips must be followed by this regex suffix (both ipv4 and ipv6)\n"
-	    "\t\t-r             reverse-mode i.e. for unscrambling ip addresses\n"
 	    "\t\t-t             text mode: read text from stdin and scramble all addresses\n"
 	    "\t\t               that can be found using regex (use with caution)\n"
+#endif //HAVE_REGEX_H
+	    "\t\t-r             reverse-mode i.e. for unscrambling ip addresses\n"
 	    , pname);
     exit(1);
 }
@@ -95,7 +103,7 @@ anon_ip4_txt(const char *oldip, char *newip) {
     if (inet_pton(AF_INET, oldip, &ip4) <= 0) {
 	fprintf(stderr, "don't understand address (%s)\n", oldip);
 #ifdef HAVE_STRLCPY
-    	strlcpy(newip, oldip, strlen(oldip));
+	strlcpy(newip, oldip, INITBUFSIZE);
 #else
 	strcpy(newip, oldip); //copy without changing
 #endif
@@ -116,7 +124,7 @@ anon_ip6_txt(const char *oldip, char *newip) {
     if (inet_pton(AF_INET6, oldip, &ip6) <= 0) {
 	fprintf(stderr, "don't understand address (%s)\n", oldip);
 #ifdef HAVE_STRLCPY
-    	strlcpy(newip, oldip, strlen(oldip));
+	strlcpy(newip, oldip, INITBUFSIZE);
 #else
 	strcpy(newip, oldip); //copy without changing
 #endif
@@ -195,10 +203,12 @@ main(int argc, char *argv[])
     int text_mode = 0;
     int opt_newkey = 0;
     char *opt_keytype = NULL;
+#if HAVE_REGEX_H
     char *opt_ipprefix = NULL;
     char *opt_ipsuffix = NULL;
     char regex4[4096];
     char regex6[4096];
+#endif //HAVE_REGEX_H
 
     scramble_crypt_t key_crypto = SCRAMBLE_BLOWFISH;
 
@@ -208,14 +218,19 @@ main(int argc, char *argv[])
 	{"pass4", 1, NULL, PASS4},
 	{"pass6", 1, NULL, PASS6},
         {"type",  1, NULL, KTYPE},
+#if HAVE_REGEX_H
 	{"text",  0, NULL, 't'},
         {"ip-prefix", 1, NULL, IPPREFIX},
         {"ip-suffix", 1, NULL, IPSUFFIX},
+#endif //HAVE_REGEX_H
     };
 
     while((opt = getopt_long(argc, argv,
-			     "Ghrt",
-			     long_options, NULL)) != EOF) {
+			     "Ghr"
+#if HAVE_REGEX_H
+                             "t"
+#endif //HAVE_REGEX_H
+			     , long_options, NULL)) != EOF) {
 	switch(opt) {
 	    /* long options first: */
 	case PASS4:
@@ -243,16 +258,21 @@ main(int argc, char *argv[])
             } else if (strcmp(opt_keytype, "md5") == 0) {
                 key_crypto = SCRAMBLE_MD5;
             } else {
-                fprintf(stderr, "Error: unsupported crypto key type: '%s'\n", opt_keytype);
+                fprintf(stderr, "Error: unsupported crypto key type: '%s' (can be one of: blowfish, aes, sha1, md5)\n", opt_keytype);
                 exit(1);
             }
             break;
+#if HAVE_REGEX_H
         case IPPREFIX:
             opt_ipprefix = optarg;
             break;
         case IPSUFFIX:
             opt_ipsuffix = optarg;
             break;
+	case 't':
+	    text_mode = 1;
+	    break;
+#endif //HAVE_REGEX_H
 
 	    /* short options: */
         case 'G':
@@ -264,9 +284,6 @@ main(int argc, char *argv[])
 	    break;
 	case 'r':
 	    reverse_mode = 1;
-	    break;
-	case 't':
-	    text_mode = 1;
 	    break;
 
 	default:
@@ -289,10 +306,12 @@ main(int argc, char *argv[])
         fprintf(stderr, "Error: --type requires --newkey (-G) option.\n");
         exit(1);
     }
+#if HAVE_REGEX_H
     if (!text_mode && (opt_ipprefix != NULL || opt_ipsuffix != NULL)) {
         fprintf(stderr, "--ip-prefix and --ipsuffix require text mode (-t).\n");
         exit(1);
     }
+#endif //HAVE_REGEX_H
     if ((keyfile = fopen(keyfn, "r")) == NULL) {
         if (!opt_newkey) {
             /* no keyfile, but supposed to exist */
@@ -310,7 +329,7 @@ main(int argc, char *argv[])
     if (keyfile) fclose(keyfile);
 
     if (scramble_init_from_file(keyfn, key_crypto, key_crypto, NULL) < 0) {
-	fprintf(stderr, "Error: accessing keyfile '%s'\n", keyfn);
+	fprintf(stderr, "Error: can't initialize from keyfile '%s'\n", keyfn);
 	exit(1);
     }
     if (opt_newkey) {
@@ -324,40 +343,35 @@ main(int argc, char *argv[])
     }
 
 #if 1 //HAVE_REGEX_H
-    static const char REGEX4[]="((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?))";
-    static const char REGEX6[]="(((([0-9A-Fa-f]{1,4}:){7}([0-9A-Fa-f]{1,4}|:))|(([0-9A-Fa-f]{1,4}:){6}(:[0-9A-Fa-f]{1,4}|((25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])(\\.(25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])){3})|:))|(([0-9A-Fa-f]{1,4}:){5}(((:[0-9A-Fa-f]{1,4}){1,2})|:((25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])(\\.(25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])){3})|:))|(([0-9A-Fa-f]{1,4}:){4}(((:[0-9A-Fa-f]{1,4}){1,3})|((:[0-9A-Fa-f]{1,4})?:((25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])(\\.(25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])){3}))|:))|(([0-9A-Fa-f]{1,4}:){3}(((:[0-9A-Fa-f]{1,4}){1,4})|((:[0-9A-Fa-f]{1,4}){0,2}:((25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])(\\.(25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])){3}))|:))|(([0-9A-Fa-f]{1,4}:){2}(((:[0-9A-Fa-f]{1,4}){1,5})|((:[0-9A-Fa-f]{1,4}){0,3}:((25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])(\\.(25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])){3}))|:))|(([0-9A-Fa-f]{1,4}:){1}(((:[0-9A-Fa-f]{1,4}){1,6})|((:[0-9A-Fa-f]{1,4}){0,4}:((25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])(\\.(25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])){3}))|:))|(:(((:[0-9A-Fa-f]{1,4}){1,7})|((:[0-9A-Fa-f]{1,4}){0,5}:((25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])(\\.(25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])){3}))|:)))(%.+)?)";
-
-    regex_t r4, r6;
-
-    linebuf1_sz = INITBUFSIZE;
-    linebuf1 = malloc(linebuf1_sz);
-    linebuf2_sz = INITBUFSIZE;
-    linebuf2 = malloc(linebuf2_sz);
-
-    memset(regex4, 0, sizeof(regex4));
-    memset(regex6, 0, sizeof(regex6));
-    if (opt_ipprefix != NULL) {
-        strncat(regex4, opt_ipprefix, sizeof(regex4)-1);
-        strncat(regex6, opt_ipprefix, sizeof(regex6)-1);
-    }
-    strncat(regex4, REGEX4, sizeof(regex4)-1);
-    strncat(regex6, REGEX6, sizeof(regex6)-1);
-    if (opt_ipsuffix != NULL) {
-        strncat(regex4, opt_ipsuffix, sizeof(regex4)-1);
-        strncat(regex6, opt_ipsuffix, sizeof(regex6)-1);
-    }
-    if (regex4[sizeof(regex4)-1] != '\0' ||
-        regex6[sizeof(regex6)-1] != '\0') {
-        fprintf(stderr, "Error: regex for ip addresses is too long.");
-        exit(1);
-    }
-
-    if (0 != regcomp(&r4, regex4, REG_EXTENDED|REG_NEWLINE))
-	exit(1);
-    if (0 != regcomp(&r6, regex6, REG_EXTENDED|REG_NEWLINE))
-    	exit(1);
-
     if (text_mode) {
+        linebuf1_sz = INITBUFSIZE;
+        linebuf2_sz = INITBUFSIZE;
+        linebuf1 = malloc(linebuf1_sz);
+        linebuf2 = malloc(linebuf2_sz);
+
+        memset(regex4, 0, sizeof(regex4));
+        memset(regex6, 0, sizeof(regex6));
+        if (opt_ipprefix != NULL) {
+            strncat(regex4, opt_ipprefix, sizeof(regex4)-1);
+            strncat(regex6, opt_ipprefix, sizeof(regex6)-1);
+        }
+        strncat(regex4, REGEX4, sizeof(regex4)-1);
+        strncat(regex6, REGEX6, sizeof(regex6)-1);
+        if (opt_ipsuffix != NULL) {
+            strncat(regex4, opt_ipsuffix, sizeof(regex4)-1);
+            strncat(regex6, opt_ipsuffix, sizeof(regex6)-1);
+        }
+        if (regex4[sizeof(regex4)-1] != '\0' ||
+            regex6[sizeof(regex6)-1] != '\0') {
+            fprintf(stderr, "Error: regex for ip addresses is too long.");
+            exit(1);
+        }
+
+        regex_t r4, r6;
+        if (0 != regcomp(&r4, regex4, REG_EXTENDED|REG_NEWLINE))
+            exit(1);
+        if (0 != regcomp(&r6, regex6, REG_EXTENDED|REG_NEWLINE))
+            exit(1);
 	linebuf1[linebuf1_sz-1]='x'; //anything but zero
 	//xxx todo: use buffered reading/writing
 	while (fgets(linebuf1, linebuf1_sz, stdin) != NULL) {
@@ -374,30 +388,28 @@ main(int argc, char *argv[])
 	    //output
 	    fputs(linebuf1, stdout);
 	}
+        regfree(&r4);
+        regfree(&r6);
+        free(linebuf1);
+        free(linebuf2);
 	return 0;
     }
 #endif
 
-    if (text_mode) {
-        fprintf(stderr, "Error: scramble_ips was compiled without regex library, text mode is disabled\n");
-        exit(1);
-    }
     for (;;) {
 	int af;
 	int i;
 	int prefix = 0;
 	char *plen = NULL;
 	char *c;
-	size_t cbuf_sz = IP6MAXLEN*2;
-	char *cbuf = malloc(cbuf_sz);
 
 	struct in_addr	ip4, ip4s;
 	struct in6_addr ip6, ip6s;
 	void *new = NULL;
 	// char *c2;
-	if (fgets(cbuf, cbuf_sz, stdin) == NULL)
+	if (fgets(cbuf, CBUF_SZ, stdin) == NULL)
 	    break;
-	for (i = strnlen(cbuf, cbuf_sz-1)-1; i >= 0; --i) {
+	for (i = strnlen(cbuf, CBUF_SZ-1)-1; i >= 0; --i) {
 	    if (!isgraph(cbuf[i]))
 		cbuf[i] = '\0';
 	}
@@ -460,7 +472,7 @@ main(int argc, char *argv[])
 	    }
 	}
 
-	if (cbuf != inet_ntop(af, new, cbuf, cbuf_sz)) {
+	if (cbuf != inet_ntop(af, new, cbuf, CBUF_SZ)) {
 	    perror("Error: can't print new address");
 	    exit(1);
 	}
@@ -470,5 +482,6 @@ main(int argc, char *argv[])
 	    printf("/%d", prefix);
 	printf("\n");
     }
+    scramble_cleanup();
     return 0;
 }

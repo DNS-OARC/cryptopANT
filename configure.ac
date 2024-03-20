@@ -1,6 +1,6 @@
 m4_define([cryptopANT_major_version], [1])
-m4_define([cryptopANT_minor_version], [2])
-m4_define([cryptopANT_micro_version], [1])
+m4_define([cryptopANT_minor_version], [3])
+m4_define([cryptopANT_micro_version], [0])
 m4_define([cryptopANT_version], [cryptopANT_major_version.cryptopANT_minor_version.cryptopANT_micro_version])
 
 #format: current:revision:age
@@ -14,6 +14,7 @@ m4_define([cryptopANT_library_version], ["1:3:0"])
 AC_INIT([cryptopANT], [cryptopANT_version], [ant@isi.edu], [cryptopANT])
 dnl m4_pattern_allow(AC_CONFIG_MACRO_DIRS)
 AC_CONFIG_MACRO_DIR([m4])
+AC_CONFIG_HEADERS([src/config.h])
 AC_PROG_CC
 AC_C_BIGENDIAN()
 AM_PROG_CC_C_O
@@ -21,6 +22,12 @@ AM_PROG_CC_C_O
 # Check headers
 AC_CHECK_HEADERS([openssl/blowfish.h], HAVE_OPENSSL=1, HAVE_OPENSSL=0)
 AC_CHECK_HEADERS([openssl/sha.h],,                     HAVE_OPENSSL=0)
+AC_CHECK_HEADERS([openssl/aes.h],,                     HAVE_OPENSSL=0)
+AC_CHECK_HEADERS([openssl/md5.h],,                     HAVE_OPENSSL=0)
+AC_CHECK_HEADERS([openssl/evp.h],,                     HAVE_OPENSSL=0)
+AC_CHECK_HEADERS([openssl/provider.h],,                HAVE_OPENSSL=0)
+AC_CHECK_HEADERS([openssl/err.h],,                     HAVE_OPENSSL=0)
+AC_CHECK_HEADERS([openssl/core_names.h],,              HAVE_OPENSSL=0)
 
 # Check for POSIX regular expressions support.
 AC_CHECK_HEADERS([regex.h], HAVE_REGEX_H=1,            HAVE_REGEX_H=0)
@@ -33,11 +40,17 @@ fi
 if test "x$HAVE_REGEX_H" = "x0"; then
 	AC_MSG_FAILURE([regex library is not found: make sure glibc-devel is installed])
 fi
-AC_CHECK_LIB([crypto], [BF_ecb_encrypt],,              HAVE_OPENSSL=0)
 if test "x$HAVE_OPENSSL_H" = "x0"; then
      AC_MSG_FAILURE([ssl is not found: make sure openssl-devel is installed])
 fi
+AC_CHECK_LIB([crypto], [EVP_CIPHER_CTX_new],,          HAVE_OPENSSL=0)
+AC_CHECK_LIB([crypto], [EVP_MD_CTX_new],,              HAVE_OPENSSL=0)
+if test "x$HAVE_OPENSSL" = "x0"; then
+     AC_MSG_FAILURE([ssl is not found: make sure openssl library version 3.1.0 or higher  is installed])
+fi
 
+AC_DEFINE([HAVE_S6_ADDR32], [0], [S6_ADDR32 is present in in6_addr when defined])
+AC_DEFINE([HAVE__U6_ADDR32], [0], [U6_ADDR32 is present in in6_addr when defined])
 AC_CHECK_MEMBER([struct in6_addr.s6_addr32],
 	[AC_DEFINE([HAVE_S6_ADDR32], [1])],
 	[

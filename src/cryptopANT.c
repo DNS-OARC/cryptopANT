@@ -1,7 +1,7 @@
 /* -*-  Mode:C; c-basic-offset:8; tab-width:8; indent-tabs-mode:t -*- */
 /*
- * Copyright (C) 2004-2018 by the University of Southern California
- * $Id: 35e089a7da2122012654b19832826c3224f1f2dc $
+ * Copyright (C) 2004-2024 by the University of Southern California
+ * $Id: 08c7e189cae19260957f372fd3199a29447d2827 $
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License,
@@ -18,11 +18,6 @@
  *
  */
 
-// #ifndef lint
-// static const char rcsid[] =
-//     "@(#) $Id: 35e089a7da2122012654b19832826c3224f1f2dc $";
-// #endif
-
 #include <stdio.h>
 
 #include <sys/types.h>
@@ -38,12 +33,17 @@
 #include <errno.h>
 #include <assert.h>
 
+#include <openssl/evp.h>
 #include <openssl/md5.h>
 #include <openssl/blowfish.h>
 #include <openssl/sha.h>
 #include <openssl/aes.h>
+#include <openssl/err.h>
+#include <openssl/core_names.h>
+#include <openssl/provider.h>
 
 #include "cryptopANT.h"
+#include "config.h"
 
 #define MAX_BLK_LENGTH		32
 #define CACHE_BITS		24	/* How many bits of IPv4 we cache, cannot be zero */
@@ -57,7 +57,7 @@
 #define MAX(a,b)		((a) > (b) ? (a) : (b))
 #endif
 
-#ifdef HAVE__U6_ADDR32
+#if HAVE__U6_ADDR32
 #define s6_addr32 __u6_addr.__u6_addr32
 #endif
 
@@ -92,11 +92,8 @@ static uint32_t ip4cache[1<<CACHE_BITS];
 static uint32_t ip4pad; 			/* first 4 bytes of pad */
 static uint32_t ip6pad[4];
 static u_char	scramble_mac_buf[MAX_BLK_LENGTH];
+static u_char   scramble_key[MAX_BLK_LENGTH];
 
-static struct {
-	AES_KEY	aeskey;
-	BF_KEY  bfkey;
-} scramble_key;
 static uint8_t	ivec[64];
 
 /* statistics */
@@ -108,8 +105,14 @@ static long	ipv6_anon_calls = 0;
 static ipv4_hash_blk_t b4_in, b4_out;
 static ipv6_hash_blk_t b6_in, b6_out;
 
-static scramble_crypt_t scramble_crypto4 = SCRAMBLE_BLOWFISH;
-static scramble_crypt_t scramble_crypto6 = SCRAMBLE_BLOWFISH;
+static scramble_crypt_t scramble_crypto4 = SCRAMBLE_AES;
+static scramble_crypt_t scramble_crypto6 = SCRAMBLE_AES;
+
+/* openssl EVP pointers */
+static EVP_CIPHER_CTX *ctx4, *ctx6; 
+static EVP_CIPHER     *cipher4, *cipher6;
+static EVP_MD_CTX     *mdctx4, *mdctx6;
+static EVP_MD         *md4, *md6;
 
 static struct {
 	char 			*name;
@@ -225,7 +228,7 @@ scramble_newiv(u_char *iv, int ivlen)
 static int
 readhexstring(FILE *f, u_char *s, int *len)
 {
-        char c = 0;
+	char c = 0;
 	int i;
 	for (i = 0; i < *len + 1; ++i) {
 		switch (fread(&c, 1, 1, f)) {
@@ -362,10 +365,48 @@ scramble_savestate(const char *fn, const scramble_state_t *s)
 	return 0;
 }
 
+void
+scramble_cleanup()
+{
+	// openssl evp cleanup
+	if (ctx4 != NULL) {
+		EVP_CIPHER_CTX_free(ctx4);
+		ctx4 = NULL;
+	}
+	if (ctx6 != NULL) {
+		EVP_CIPHER_CTX_free(ctx6);
+		ctx6 = NULL;
+	}
+	if (mdctx4 != NULL) {
+		EVP_MD_CTX_free(mdctx4);
+		mdctx4 = NULL;
+	}
+	if (mdctx6 != NULL) {
+		EVP_MD_CTX_free(mdctx6);
+		mdctx6 = NULL;
+	}
+	if (cipher4 != NULL) {
+		EVP_CIPHER_free(cipher4);
+		cipher4 = NULL;
+	}
+	if (cipher6 != NULL) {
+		EVP_CIPHER_free(cipher6);
+		cipher6 = NULL;
+	}
+	if (md4 != NULL) {
+		EVP_MD_free(md4);
+		md4 = NULL;
+	}
+	if (md6 != NULL) {
+		EVP_MD_free(md6);
+		md6 = NULL;
+	}
+}		
+
+
 int
 scramble_init(const scramble_state_t *s)
 {
-
 	int plen;
 	if (s->plen > MAX_BLK_LENGTH)
 		plen = MAX_BLK_LENGTH;
@@ -384,12 +425,107 @@ scramble_init(const scramble_state_t *s)
 	ip6pad[2] = b6_in.ip6.s6_addr32[2];
 	ip6pad[3] = b6_in.ip6.s6_addr32[3];
 
-	if (s->c4 == SCRAMBLE_BLOWFISH || s->c6 == SCRAMBLE_BLOWFISH) {
-		BF_set_key(&scramble_key.bfkey, s->klen, s->key);
-        }
-	if (s->c4 == SCRAMBLE_AES || s->c6 == SCRAMBLE_AES) {
-                AES_set_encrypt_key(s->key, s->klen*8, &scramble_key.aeskey);
+	memcpy(scramble_key, s->key, s->klen);
+
+	// create contexts (will not need them all)
+	ctx4    = EVP_CIPHER_CTX_new();
+	ctx6    = EVP_CIPHER_CTX_new();
+	mdctx4  = EVP_MD_CTX_new();
+	mdctx6  = EVP_MD_CTX_new();
+
+	// fetch ciphers and digests
+	void *res_ctx = NULL, *res_crypt = NULL;
+	switch(s->c4) {
+	case SCRAMBLE_AES:
+		OSSL_PROVIDER_load(NULL, "default");
+		cipher4 = EVP_CIPHER_fetch(NULL, "AES-128-ECB", "provider=default");
+		res_ctx = ctx4;
+		res_crypt = cipher4;
+		break;
+	case SCRAMBLE_BLOWFISH:
+		OSSL_PROVIDER_load(NULL, "legacy");
+		cipher4 = EVP_CIPHER_fetch(NULL, "BF-ECB", "provider=legacy");
+		res_ctx = ctx4;
+		res_crypt = cipher4;
+		break;
+	case SCRAMBLE_SHA1:
+		md4 = EVP_MD_fetch(NULL, "SHA1", NULL);
+		res_ctx = mdctx4;
+		res_crypt = md4;
+		break;
+	case SCRAMBLE_MD5:
+		md4 = EVP_MD_fetch(NULL, "MD5", NULL);
+		res_ctx = mdctx4;
+		res_crypt = md4;
+		break;
+        case SCRAMBLE_NONE:
+                break;
+        default:
+		fprintf(stderr,
+			"scramble_init(): unsupported ipv4 scrambling crypto: %d\n", s->c4);
+		return -1;
 	}
+	if (s->c4 != SCRAMBLE_NONE && (res_ctx == NULL || res_crypt == NULL)) {
+		fprintf(stderr,
+			"scramble_init(): EVP ip4 init failures %p %p\n", res_ctx, res_crypt);
+		return -1;
+	}
+
+	res_ctx = res_crypt = NULL;
+	
+	switch(s->c6) {
+	case SCRAMBLE_AES:
+		OSSL_PROVIDER_load(NULL, "default");
+		cipher6 = EVP_CIPHER_fetch(NULL, "AES-128-ECB", "provider=default");
+		res_ctx = ctx6;
+		res_crypt = cipher6;
+		break;
+	case SCRAMBLE_BLOWFISH:
+		OSSL_PROVIDER_load(NULL, "legacy");
+		cipher6 = EVP_CIPHER_fetch(NULL, "BF-CBC", "provider=legacy");
+		res_ctx = ctx6;
+		res_crypt = cipher6;
+		break;
+	case SCRAMBLE_SHA1:
+		md6 = EVP_MD_fetch(NULL, "SHA1", NULL);
+		res_ctx = mdctx6;
+		res_crypt = md6;
+		break;
+	case SCRAMBLE_MD5:
+		md6 = EVP_MD_fetch(NULL, "MD5", NULL);
+		res_ctx = mdctx6;
+		res_crypt = md6;
+		break;
+        case SCRAMBLE_NONE:
+                break;
+        default:
+		fprintf(stderr,
+			"scramble_init(): unsupported ipv6 scrambling crypto: %d\n", s->c6);
+		return -1;
+
+	}
+	if (s->c6 != SCRAMBLE_NONE && (res_ctx == NULL || res_crypt == NULL)) {
+		fprintf(stderr,
+			"scramble_init(): EVP ip6 init failures %p %p\n", res_ctx, res_crypt);
+		return -1;
+	}
+	if (cipher4 != NULL) {
+		if (!EVP_EncryptInit_ex2(ctx4, cipher4, scramble_key, ivec, NULL)) {
+			fprintf(stderr,
+				"scramble_init(): EVP_EncryptInit_ex2 failed:");
+			ERR_print_errors_fp(stderr);
+			return -1;
+		}
+	}
+	if (cipher6 != NULL) {
+		if (!EVP_EncryptInit_ex2(ctx6, cipher6, scramble_key, ivec, NULL)) {
+			fprintf(stderr,
+				"scramble_init(): EVP_EncryptInit_ex2 failed:");
+			ERR_print_errors_fp(stderr);
+			return -1;
+		}
+	}
+	// don't need to init anything for digests
 
 	scramble_mac = 0;
 
@@ -470,6 +606,7 @@ scramble_init_from_file(const char *fn, scramble_crypt_t c4, scramble_crypt_t c6
 			*do_mac = (s.mlen > 0);
 	}
 
+
 	if (scramble_init(&s) < 0)
 		return -1;
 	return 0;
@@ -483,6 +620,7 @@ scramble_ip4(uint32_t input, int pass_bits) {
 	int i = 31;
 	int class_bits = 0;
 	int pbits = 0;
+	int outlen;
 #define MAX_CLASS_BITS		4
 	static int _class_bits[1<<MAX_CLASS_BITS] = {
 		1,1,1,1,1,1,1,1, /* class A: preserve 1 bit  */
@@ -522,18 +660,32 @@ scramble_ip4(uint32_t input, int pass_bits) {
 		 *   b4_in.ip4 |= (ip4pad & ~m); */
 		b4_in.ip4 |= (ip4pad >> i);
 		b4_in.ip4 = cryptopant_swap32(b4_in.ip4);
+		uint mdlen = MD5_DIGEST_LENGTH;
 		switch (scramble_crypto4) {
-		case SCRAMBLE_MD5:
-			MD5((u_char*)&b4_in, MD5_DIGEST_LENGTH, (u_char*)&b4_out);
-			break;
 		case SCRAMBLE_BLOWFISH:
-			BF_ecb_encrypt((u_char*)&b4_in, (u_char*)&b4_out, &scramble_key.bfkey, BF_ENCRYPT);
-			break;
+			if (!EVP_CipherUpdate(ctx4, (u_char*)&b4_out, &outlen, (u_char*)&b4_in, BF_BLOCK)) {
+				/* Error */
+				fprintf(stderr, "scramble_ip4(): EVP_CipherUpdate failed");
+				abort();
+			}
 		case SCRAMBLE_AES:
-			AES_ecb_encrypt((u_char*)&b4_in, (u_char*)&b4_out, &scramble_key.aeskey, AES_ENCRYPT);
+			if (!EVP_CipherUpdate(ctx4, (u_char*)&b4_out, &outlen, (u_char*)&b4_in, AES_BLOCK_SIZE)) {
+				/* Error */
+				fprintf(stderr, "scramble_ip4(): EVP_CipherUpdate failed");
+				abort();
+			}
 			break;
 		case SCRAMBLE_SHA1:
-			SHA1((u_char*)&b4_in, SHA_DIGEST_LENGTH, (u_char*)&b4_out);
+			mdlen = SHA_DIGEST_LENGTH;
+			// fallthrough
+		case SCRAMBLE_MD5:
+			if (!EVP_DigestInit_ex2(mdctx4, md4, NULL) ||
+			   !EVP_DigestUpdate(mdctx4, (u_char*)&b4_in, mdlen) ||
+			   !EVP_DigestFinal_ex(mdctx4, (u_char*)&b4_out, &mdlen)) {
+				/* Error */
+				fprintf(stderr, "scramble_ip4(): EVP_Digest* failed");
+				abort();
+			}
 			break;
 		default:
 			abort();
@@ -563,6 +715,8 @@ scramble_ip6(struct in6_addr *input, int pass_bits)
 	b6_in.ip6.s6_addr32[1] = ip6pad[1];
 	b6_in.ip6.s6_addr32[2] = ip6pad[2];
 	b6_in.ip6.s6_addr32[3] = ip6pad[3];
+	int outlen = AES_BLOCK_SIZE;
+	uint mdlen;
 
 	for (w = 0; w < 4; ++w) {
 		uint32_t m = 0xffffffff << 1;
@@ -579,23 +733,38 @@ scramble_ip6(struct in6_addr *input, int pass_bits)
 			b6_in.ip6.s6_addr32[w] = htonl(x);
 			/* hashing proper */
 			switch (scramble_crypto6) {
-			case SCRAMBLE_MD5:
-				MD5((u_char*)&b6_in, MD5_DIGEST_LENGTH, (u_char*)&b6_out);
-				break;
 			case SCRAMBLE_BLOWFISH:
 				/* use BF in chain mode */
-				memset(ivec, 0, sizeof(ivec));
-				BF_cbc_encrypt((u_char*)&b6_in, (u_char*)&b6_out,
-					       sizeof(struct in6_addr),
-					       &scramble_key.bfkey,
-					       ivec, BF_ENCRYPT);
+				if (!EVP_CipherInit_ex2(ctx6, cipher6, scramble_key, NULL, 1 /*encode*/, NULL)) {
+					fprintf(stderr,
+						"scramble_init(): EVP_CipherInit_ex2 failed:");
+					ERR_print_errors_fp(stderr);
+				}
+				if (!EVP_CipherUpdate(ctx6, (u_char*)&b6_out, &outlen, (u_char*)&b6_in, sizeof(b6_in))) {
+					/* Error */
+					fprintf(stderr, "scramble_ip6(): EVP_CipherUpdate failed");
+				}
 				break;
 			case SCRAMBLE_AES:
-				AES_ecb_encrypt((u_char*)&b6_in, (u_char*)&b6_out,
-						&scramble_key.aeskey, AES_ENCRYPT);
+				if (!EVP_CipherUpdate(ctx6, (u_char*)&b6_out, &outlen, (u_char*)&b6_in, AES_BLOCK_SIZE)) {
+					/* Error */
+					fprintf(stderr, "scramble_ip6(): EVP_CipherUpdate failed");
+				}
 				break;
 			case SCRAMBLE_SHA1:
-				SHA1((u_char*)&b6_in, SHA_DIGEST_LENGTH, (u_char*)&b6_out);
+			case SCRAMBLE_MD5:
+				if (scramble_crypto6 == SCRAMBLE_SHA1) {
+					mdlen = SHA_DIGEST_LENGTH;
+				} else {
+					mdlen = MD5_DIGEST_LENGTH;
+				}
+				// fallthrough
+				if (!EVP_DigestInit_ex2(mdctx6, md6, NULL) ||
+				   !EVP_DigestUpdate(mdctx6, (u_char*)&b6_in, mdlen) ||
+				   !EVP_DigestFinal_ex(mdctx6, (u_char*)&b6_out, &mdlen)) {
+					/* Error */
+					fprintf(stderr, "scramble_ip6(): EVP_Digest* failed");
+				}
 				break;
 			default:
 				abort();
@@ -623,7 +792,7 @@ unscramble_ip4(uint32_t input, int pass_bits)
 	uint32_t guess, res;
 
 	guess = input; /* Starting with the input seems
-		        * a good idea because some bits
+			* a good idea because some bits
 			* may be passed through
 			* unchanged */
 	for (i=32; i>0; --i) {

@@ -1,7 +1,7 @@
 /* -*-  Mode:C; c-basic-offset:8; tab-width:8; indent-tabs-mode:t -*- */
 /*
  * Copyright (C) 2004-2024 by the University of Southern California
- * $Id: 08c7e189cae19260957f372fd3199a29447d2827 $
+ * $Id: cdc84b9fca5b7bc01d665de67bbe6358d0a8131f $
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License,
@@ -445,6 +445,9 @@ scramble_init(const scramble_state_t *s)
 	case SCRAMBLE_BLOWFISH:
 		OSSL_PROVIDER_load(NULL, "legacy");
 		cipher4 = EVP_CIPHER_fetch(NULL, "BF-ECB", "provider=legacy");
+		if (cipher4 == NULL) {
+			cipher4 = EVP_CIPHER_fetch(NULL, "BF-ECB", NULL);
+		}
 		res_ctx = ctx4;
 		res_crypt = cipher4;
 		break;
@@ -483,6 +486,9 @@ scramble_init(const scramble_state_t *s)
 	case SCRAMBLE_BLOWFISH:
 		OSSL_PROVIDER_load(NULL, "legacy");
 		cipher6 = EVP_CIPHER_fetch(NULL, "BF-CBC", "provider=legacy");
+		if (cipher6 == NULL) {
+			cipher6 = EVP_CIPHER_fetch(NULL, "BF-ECB", NULL);
+		}
 		res_ctx = ctx6;
 		res_crypt = cipher6;
 		break;
@@ -553,6 +559,7 @@ scramble_init(const scramble_state_t *s)
 int
 scramble_init_from_file(const char *fn, scramble_crypt_t c4, scramble_crypt_t c6, int *do_mac)
 {
+	// OSSL_PROVIDER *legacy_, *default_;
 	u_char pad[MAX_BLK_LENGTH];
 	u_char key[MAX_BLK_LENGTH];
 	u_char mac[MAX_BLK_LENGTH];
@@ -735,14 +742,16 @@ scramble_ip6(struct in6_addr *input, int pass_bits)
 			switch (scramble_crypto6) {
 			case SCRAMBLE_BLOWFISH:
 				/* use BF in chain mode */
-				if (!EVP_CipherInit_ex2(ctx6, cipher6, scramble_key, NULL, 1 /*encode*/, NULL)) {
+				EVP_CIPHER_CTX_reset(ctx6);
+				if (!EVP_EncryptInit_ex2(ctx6, cipher6, scramble_key, ivec, NULL)) {
 					fprintf(stderr,
-						"scramble_init(): EVP_CipherInit_ex2 failed:");
+						"scramble_init(): EVP_EncryptInit_ex2 failed:");
 					ERR_print_errors_fp(stderr);
 				}
 				if (!EVP_CipherUpdate(ctx6, (u_char*)&b6_out, &outlen, (u_char*)&b6_in, sizeof(b6_in))) {
 					/* Error */
-					fprintf(stderr, "scramble_ip6(): EVP_CipherUpdate failed");
+					fprintf(stderr, "scramble_ip6(): EVP_CipherUpdate failed\n");
+					ERR_print_errors_fp(stderr);
 				}
 				break;
 			case SCRAMBLE_AES:

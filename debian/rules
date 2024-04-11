@@ -10,6 +10,3 @@
 override_dh_auto_configure:
 	./autogen.sh
 	dh_auto_configure -- --without-scramble_ips
-
-override_dh_auto_test:
-	true

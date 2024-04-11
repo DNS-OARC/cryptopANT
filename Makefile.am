@@ -14,15 +14,15 @@ $(bin_PROGRAMS): $(lib_LTLIBRARIES)
 endif
 
 TESTS_BINARY = .libs/scramble_ips
+EXTRA_DIST = test/ip* test/keyfile*
 
-TESTS = blowfish aes sha1 md5
 CMP = cmp -s
 
 # variables to control test time
 HEAD6S=1000
 HEAD6R=1000
 
-.PHONY: test 
+.PHONY: test
 .PHONY: test_bf test_aes test_sha1 test_md5
 .PHONY: test_one_bf test_one_aes test_one_sha1 test_one_md5
 
@@ -43,7 +43,7 @@ test_md5: T=md5
 test_md5: all test_one_md5
 
 test_one_aes test_one_bf test_one_sha1 test_one_md5:
-	@test -x scramble_ips || { \
+	@test -x ./scramble_ips || { \
 		echo "scramble_ips binary wasn't built, run './configure --with-scramble_ips'"; \
 		exit 1; \
 	}
@@ -62,6 +62,9 @@ test_one_aes test_one_bf test_one_sha1 test_one_md5:
 	  | head -n $(HEAD6R) | $(CMP) <(head -n $(HEAD6R) test/ip6s) - \
 	    && echo "  ipv6 descrambling test PASSED" \
 	    || echo "  ipv6 descrambling test FAILED"
+
+.PHONY: check
+check: test
 
 .PHONY: rpmbuild
 rpmbuild: dist

@@ -1,15 +1,15 @@
 m4_define([cryptopANT_major_version], [1])
 m4_define([cryptopANT_minor_version], [3])
-m4_define([cryptopANT_micro_version], [0])
+m4_define([cryptopANT_micro_version], [1])
 m4_define([cryptopANT_version], [cryptopANT_major_version.cryptopANT_minor_version.cryptopANT_micro_version])
 
 #format: current:revision:age
-#If the library source code has changed at all since the last update, then increment revision (‘c:r:a’ becomes ‘c:r+1:a’).
+#If the library source code has changed at all since the last update, then increment revision (‘c:r:a’ becomes ‘c:r+1:a’). 
 #If any interfaces have been added, removed, or changed since the last update, increment current, and set revision to 0.
 #If any interfaces have been added since the last public release, then increment age.
-#If any interfaces have been removed or changed since the last public release, then set age to 0.
+#If any interfaces have been removed or changed since the last public release, then set age to 0. 
 #see also https://autotools.io/libtool/version.html
-m4_define([cryptopANT_library_version], ["1:3:0"])
+m4_define([cryptopANT_library_version], ["1:4:0"])
 
 AC_INIT([cryptopANT], [cryptopANT_version], [ant@isi.edu], [cryptopANT])
 dnl m4_pattern_allow(AC_CONFIG_MACRO_DIRS)

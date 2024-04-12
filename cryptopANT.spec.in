@@ -6,7 +6,7 @@ License:                GPL
 URL:                    http://ant.isi.edu/software/cryptopANT/index.html
 Name:                   %{name}
 Version:                %{version}
-Release:                1%{?dist}
+Release:                1
 Source:                 %{name}-%{version}.tar.gz
 Packager:               yuri@isi.edu
 Prefix:                 /usr
@@ -46,10 +46,12 @@ rm -rf $RPM_BUILD_ROOT
 %files
 %defattr(-,root,root,-)
 %{_includedir}/*
-%{_mandir}/man3/*
 %{_libdir}/*.so
 %{_libdir}/*.so.*
 %{_libdir}/*.a
-%exclude %{_libdir}/*.la
 %{_bindir}/scramble_ips
 %{_mandir}/man3/*
+
+%changelog
+* Mon Mar 25 2024 Yuri Pradkin <yuri@isi.edu> - 1.4.1
+- Fixed blowfish regression introduced in 1.4.0

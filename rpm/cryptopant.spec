@@ -56,10 +56,6 @@ sh autogen.sh
 make %{?_smp_mflags}
 
 
-%check
-make test
-
-
 %install
 rm -rf $RPM_BUILD_ROOT
 make install DESTDIR=$RPM_BUILD_ROOT

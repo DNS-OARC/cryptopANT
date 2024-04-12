@@ -52,7 +52,7 @@ anonymization of ipv4 and ipv6 addresses.
 
 %build
 sh autogen.sh
-%configure --without-scramble_ips
+%configure
 make %{?_smp_mflags}
 
 

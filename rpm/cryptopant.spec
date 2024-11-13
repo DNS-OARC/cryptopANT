@@ -36,7 +36,7 @@ anonymization of ipv4 and ipv6 addresses.
 %package devel
 Summary:        IP address anonymization library development files
 Group:          Development/Libraries/C and C++
-Requires:       %{libname} = %{version}
+Requires:       %{libname}%{?_isa} = %{version}-%{release}
 Requires:       openssl-devel
 
 %description devel
@@ -53,16 +53,15 @@ anonymization of ipv4 and ipv6 addresses.
 %build
 sh autogen.sh
 %configure
-make %{?_smp_mflags}
+%make_build
 
 
 %install
-rm -rf $RPM_BUILD_ROOT
-make install DESTDIR=$RPM_BUILD_ROOT
+%make_install
 
 
-%clean
-rm -rf $RPM_BUILD_ROOT
+%check
+true
 
 
 %post -n %{libname}
@@ -74,12 +73,10 @@ rm -rf $RPM_BUILD_ROOT
 
 
 %files -n %{libname}
-%defattr(-,root,root,-)
 %{_libdir}/libcryptopant.so.%{sover}*
 
 
 %files devel
-%defattr(-,root,root,-)
 %{_includedir}/*
 %{_mandir}/man3/*
 %{_libdir}/libcryptopant.so

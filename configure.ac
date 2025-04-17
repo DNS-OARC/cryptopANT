@@ -4,10 +4,10 @@ m4_define([cryptopANT_micro_version], [1])
 m4_define([cryptopANT_version], [cryptopANT_major_version.cryptopANT_minor_version.cryptopANT_micro_version])
 
 #format: current:revision:age
-#If the library source code has changed at all since the last update, then increment revision (‘c:r:a’ becomes ‘c:r+1:a’). 
+#If the library source code has changed at all since the last update, then increment revision (‘c:r:a’ becomes ‘c:r+1:a’).
 #If any interfaces have been added, removed, or changed since the last update, increment current, and set revision to 0.
 #If any interfaces have been added since the last public release, then increment age.
-#If any interfaces have been removed or changed since the last public release, then set age to 0. 
+#If any interfaces have been removed or changed since the last public release, then set age to 0.
 #see also https://autotools.io/libtool/version.html
 m4_define([cryptopANT_library_version], ["1:4:0"])
 
@@ -18,6 +18,21 @@ AC_CONFIG_HEADERS([src/config.h])
 AC_PROG_CC
 AC_C_BIGENDIAN()
 AM_PROG_CC_C_O
+
+# Check --enable-warn-all
+AC_ARG_ENABLE([warn-all], [AS_HELP_STRING([--enable-warn-all], [Enable all compiler warnings])], [AX_CFLAGS_WARN_ALL()])
+
+# Check --with-extra-cflags
+AC_ARG_WITH([extra-cflags], [AS_HELP_STRING([--with-extra-cflags=CFLAGS], [Add extra CFLAGS])], [
+  AC_MSG_NOTICE([appending extra CFLAGS... $withval])
+  AS_VAR_APPEND(CFLAGS, [" $withval"])
+])
+
+# Check --with-extra-ldflags
+AC_ARG_WITH([extra-ldflags], [AS_HELP_STRING([--with-extra-ldflags=LDFLAGS], [Add extra LDFLAGS])], [
+  AC_MSG_NOTICE([appending extra LDFLAGS... $withval])
+  AS_VAR_APPEND(LDFLAGS, [" $withval"])
+])
 
 # Check headers
 AC_CHECK_HEADERS([openssl/blowfish.h], HAVE_OPENSSL=1, HAVE_OPENSSL=0)
@@ -65,21 +80,6 @@ AC_CHECK_FUNCS([strlcpy])
 AC_C_CONST
 AC_TYPE_SIZE_T
 AC_TYPE_UINT32_T
-
-# Check --enable-warn-all
-AC_ARG_ENABLE([warn-all], [AS_HELP_STRING([--enable-warn-all], [Enable all compiler warnings])], [AX_CFLAGS_WARN_ALL()])
-
-# Check --with-extra-cflags
-AC_ARG_WITH([extra-cflags], [AS_HELP_STRING([--with-extra-cflags=CFLAGS], [Add extra CFLAGS])], [
-  AC_MSG_NOTICE([appending extra CFLAGS... $withval])
-  AS_VAR_APPEND(CFLAGS, [" $withval"])
-])
-
-# Check --with-extra-ldflags
-AC_ARG_WITH([extra-ldflags], [AS_HELP_STRING([--with-extra-ldflags=LDFLAGS], [Add extra LDFLAGS])], [
-  AC_MSG_NOTICE([appending extra LDFLAGS... $withval])
-  AS_VAR_APPEND(LDFLAGS, [" $withval"])
-])
 
 # Check --with-scramble_ips
 build_scramble_ips=no

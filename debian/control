@@ -6,8 +6,8 @@ Build-Depends: debhelper (>= 10), build-essential, automake, autoconf,
  libtool, libssl-dev
 Standards-Version: 3.9.4
 Homepage: http://ant.isi.edu/software/cryptopANT/index.html
-Vcs-Git: https://github.com/DNS-OARC/cryptopANT.git
-Vcs-Browser: https://github.com/DNS-OARC/cryptopANT
+Vcs-Git: https://codeberg.org/DNS-OARC/cryptopANT.git
+Vcs-Browser: https://codeberg.org/DNS-OARC/cryptopANT
 
 Package: libcryptopant1
 Architecture: any

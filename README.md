@@ -1,3 +1,5 @@
+# NOTE: Moved to https://codeberg.org/DNS-OARC/cryptopANT
+
 # cryptopANT
 IP Address Anonymization Library
 
